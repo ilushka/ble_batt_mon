@@ -71,17 +71,22 @@
 #define UART_TX_BUF_SIZE                256                                         /**< UART TX buffer size. */
 #define UART_RX_BUF_SIZE                256                                         /**< UART RX buffer size. */
 
-#define LOOPBACK_PACKET_SIZE            100                                         // in bytes
-#define BLE_ATTR_BYTE_COUNT             20                                          // in bytes
+//! \brief max size of serialcomm frame/packet, in bytes
+#define SERIALCOMM_FRAME_SIZE           100                                         
+//! \brief max size of a GATT attribute/characteristic, in bytes
+#define GATT_ATTR_BYTE_COUNT_MAX        20                                          
 
 static ble_nus_t                        m_nus;                                      /**< Structure to identify the Nordic UART Service. */
 static uint16_t                         m_conn_handle = BLE_CONN_HANDLE_INVALID;    /**< Handle of the current connection. */
 
 static ble_uuid_t                       m_adv_uuids[] = {{BLE_UUID_NUS_SERVICE, NUS_SERVICE_UUID_TYPE}};  /**< Universally unique service identifier. */
 
-static uint8_t                          lb_buf[LOOPBACK_PACKET_SIZE];               // loopback buffer
-static uint16_t                         lb_buf_offset = 0;                          // loopback buffer offset
-static uint16_t                         lb_pending = 0;                             // loopback write data pending
+// serialcomm
+static uint8_t                          buffer[SERIALCOMM_FRAME_SIZE];              //!< serialcomm buffer
+static uint16_t                         buf_offset = 0;                             //!< serialcomm buffer offset
+static uint16_t                         wr_pending_bytes = 0;                       //!< currently transmitted (bluetooth) byte count
+static bool                             receiving = false;                          //!< currently receiving serialcomm frame
+static uint16_t                         bytes_received = 0;                         //!< received byte count over bluetooth
 
 /**@brief Function for assert macro callback.
  *
@@ -129,6 +134,16 @@ static void gap_params_init(void)
     APP_ERROR_CHECK(err_code);
 }
 
+// transmit next chunk of data over BLE
+static void ble_transmit_next_chunk() {
+    uint32_t err_code;
+    wr_pending_bytes = MIN((bytes_received - buf_offset), GATT_ATTR_BYTE_COUNT_MAX);
+    err_code = ble_nus_string_send(&m_nus, (buffer + buf_offset), wr_pending_bytes);
+    if (err_code != NRF_ERROR_INVALID_STATE)
+    {
+        APP_ERROR_CHECK(err_code);
+    }
+}
 
 /**@brief Function for handling the data from the Nordic UART Service.
  *
@@ -142,24 +157,29 @@ static void gap_params_init(void)
 /**@snippet [Handling the data received over BLE] */
 static void nus_data_handler(ble_nus_t * p_nus, uint8_t * p_data, uint16_t length)
 {
-    // MONKEY:
-    printf("RECEIVED: %d\r\n", length);
+    uint16_t ii;
 
-    memcpy((lb_buf + lb_buf_offset), p_data, length);
-    lb_buf_offset += length;
-    // (for now) wait for exact number of bytes
-    if (lb_buf_offset >= LOOPBACK_PACKET_SIZE) {
-        lb_buf_offset = 0;
+    for (ii = 0; ii < length; ++ii) {
+        if (p_data[ii] == 'g') {
+            // frame start
+            receiving = true;
+            bytes_received = 0;
+        }
 
-        // MONKEY:
-        printf("received full data\r\n");
+        if (receiving) {
+            buffer[bytes_received] = p_data[ii];
+            bytes_received++;
+        }
 
-        uint32_t err_code;
-        lb_pending = MIN((LOOPBACK_PACKET_SIZE - lb_buf_offset), BLE_ATTR_BYTE_COUNT);
-        err_code = ble_nus_string_send(&m_nus, (lb_buf + lb_buf_offset), lb_pending);
-        if (err_code != NRF_ERROR_INVALID_STATE)
-        {
-            APP_ERROR_CHECK(err_code);
+        // TODO: check buf_offset against max buffer size!
+
+        if (p_data[ii] == 'h') {
+            // end of frame
+            receiving = false;
+            buf_offset = 0;
+
+            // start sending the data back
+            ble_transmit_next_chunk();
         }
     }
 
@@ -407,23 +427,15 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
  */
 static void ble_evt_dispatch(ble_evt_t * p_ble_evt)
 {
-    uint32_t err_code;
-
     if (p_ble_evt->header.evt_id == BLE_EVT_TX_COMPLETE) {
-        printf("BLE_EVT_TX_COMPLETE:\r\n");
-
-        lb_buf_offset += lb_pending;
-        if (lb_buf_offset < LOOPBACK_PACKET_SIZE) {
-            // continue sending chunks of loopback response
-            lb_pending = MIN((LOOPBACK_PACKET_SIZE - lb_buf_offset), BLE_ATTR_BYTE_COUNT);
-            err_code = ble_nus_string_send(&m_nus, (lb_buf + lb_buf_offset), lb_pending);
-            if (err_code != NRF_ERROR_INVALID_STATE)
-            {
-                APP_ERROR_CHECK(err_code);
-            }
+        // previous transmission has completed
+        buf_offset += wr_pending_bytes;
+        if (buf_offset < bytes_received) {
+            // continue sending chunks
+            ble_transmit_next_chunk();
         } else {
             // sent all data
-            lb_buf_offset = 0;
+            buf_offset = 0;
         }
     }
 
