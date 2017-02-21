@@ -10,6 +10,7 @@ mergehex --merge _build/nrf51422_xxac.hex ~/Documents/nrf51822/softdevices/s130_
 * nRF5x-Command-Line-Tools_9_3_1_OSX.tar
 
 [download nordic libs here](http://www.nordicsemi.com/eng/Products/Bluetooth-low-energy/nRF51822#Downloads)
+
 [downolad GNU toolchani here](https://developer.arm.com/open-source/gnu-toolchain/gnu-rm/downloads)
 
 ## directory structure
