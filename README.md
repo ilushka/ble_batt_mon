@@ -21,6 +21,6 @@ mergehex --merge _build/nrf51422_xxac.hex ~/Documents/nrf51822/softdevices/s130_
         nRF5_SDK_12.2.0_f012efa.zip               # unzip here
     /softdevices                                  # nordic softdevice
         /s130_nrf51_2.0.1_API                     # created after unziping the archive
-        s130_nrf51_2.0.1.zip
+        s130_nrf51_2.0.1.zip                      # unzip here
 ```
 
