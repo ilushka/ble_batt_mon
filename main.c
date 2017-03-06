@@ -81,6 +81,15 @@
 #define SERIALCOMM_FRAME_END            '\n'
 
 #define BLENANO_LEDS_MASK               (1 << BSP_LED_0)
+#define BLINK_LONG_OFF() \
+            led_softblink_off_time_set(LED_SB_INIT_PARAMS_OFF_TIME_TICKS); \
+            led_softblink_on_time_set(0);
+#define BLINK_FAST() \
+            led_softblink_off_time_set(0); \
+            led_softblink_on_time_set(0);
+#define BLINK_LONG_ON() \
+            led_softblink_off_time_set(0); \
+            led_softblink_on_time_set(LED_SB_INIT_PARAMS_OFF_TIME_TICKS);
 
 static ble_nus_t                        m_nus;                                      /**< Structure to identify the Nordic UART Service. */
 static uint16_t                         m_conn_handle = BLE_CONN_HANDLE_INVALID;    /**< Handle of the current connection. */
@@ -271,13 +280,15 @@ static void sleep_mode_enter(void)
  */
 static void on_adv_evt(ble_adv_evt_t ble_adv_evt)
 {
-    uint32_t err_code;
+// MONKEY:    uint32_t err_code;
 
     switch (ble_adv_evt)
     {
         case BLE_ADV_EVT_FAST:
+/* MONKEY:
             err_code = bsp_indication_set(BSP_INDICATE_ADVERTISING);
             APP_ERROR_CHECK(err_code);
+*/
             break;
         case BLE_ADV_EVT_IDLE:
             sleep_mode_enter();
@@ -299,14 +310,20 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
     switch (p_ble_evt->header.evt_id)
     {
         case BLE_GAP_EVT_CONNECTED:
+            BLINK_LONG_ON();
+/* MONKEY:
             err_code = bsp_indication_set(BSP_INDICATE_CONNECTED);
             APP_ERROR_CHECK(err_code);
+*/
             m_conn_handle = p_ble_evt->evt.gap_evt.conn_handle;
             break; // BLE_GAP_EVT_CONNECTED
 
         case BLE_GAP_EVT_DISCONNECTED:
+            BLINK_LONG_OFF();
+/* MONKEY:
             err_code = bsp_indication_set(BSP_INDICATE_IDLE);
             APP_ERROR_CHECK(err_code);
+*/
             m_conn_handle = BLE_CONN_HANDLE_INVALID;
             break; // BLE_GAP_EVT_DISCONNECTED
 
@@ -656,7 +673,7 @@ int main(void)
     const led_sb_init_params_t led_sb_init_param = LED_SB_INIT_DEFAULT_PARAMS(BLENANO_LEDS_MASK);
     err_code = led_softblink_init(&led_sb_init_param);
     APP_ERROR_CHECK(err_code);
-
+    BLINK_LONG_OFF();
     err_code = led_softblink_start(BLENANO_LEDS_MASK);
     APP_ERROR_CHECK(err_code);
 
