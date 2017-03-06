@@ -27,3 +27,11 @@ mergehex --merge _build/nrf51422_xxac.hex ~/Documents/nrf51822/softdevices/s130_
         s130_nrf51_2.0.1.zip                      # unzip here
 ```
 
+## redbear ble nano board config
+
+copy rb_blenano.h to sdk/components/boards and update boards.h with:
+```c
+#elif defined(REDBEAR_BLENANO)
+  #include "rb_blenano.h"
+```
+
