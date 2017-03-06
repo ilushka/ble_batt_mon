@@ -76,6 +76,9 @@
 //! \brief max size of a GATT attribute/characteristic, in bytes
 #define GATT_ATTR_BYTE_COUNT_MAX        20                                          
 
+#define SERIALCOMM_FRAME_START          ':'
+#define SERIALCOMM_FRAME_END            '\n'
+
 static ble_nus_t                        m_nus;                                      /**< Structure to identify the Nordic UART Service. */
 static uint16_t                         m_conn_handle = BLE_CONN_HANDLE_INVALID;    /**< Handle of the current connection. */
 
@@ -160,7 +163,7 @@ static void nus_data_handler(ble_nus_t * p_nus, uint8_t * p_data, uint16_t lengt
     uint16_t ii;
 
     for (ii = 0; ii < length; ++ii) {
-        if (p_data[ii] == 'g') {
+        if (p_data[ii] == SERIALCOMM_FRAME_START) {
             // frame start
             receiving = true;
             bytes_received = 0;
@@ -173,7 +176,7 @@ static void nus_data_handler(ble_nus_t * p_nus, uint8_t * p_data, uint16_t lengt
 
         // TODO: check buf_offset against max buffer size!
 
-        if (p_data[ii] == 'h') {
+        if (p_data[ii] == SERIALCOMM_FRAME_END) {
             // end of frame
             receiving = false;
             buf_offset = 0;
@@ -428,7 +431,7 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
 static void ble_evt_dispatch(ble_evt_t * p_ble_evt)
 {
     if (p_ble_evt->header.evt_id == BLE_EVT_TX_COMPLETE) {
-        // previous transmission has completed
+        // previous BLE transmission has completed
         buf_offset += wr_pending_bytes;
         if (buf_offset < bytes_received) {
             // continue sending chunks
