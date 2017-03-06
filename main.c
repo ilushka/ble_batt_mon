@@ -161,48 +161,10 @@ static void ble_transmit_next_chunk() {
 static void nus_data_handler(ble_nus_t * p_nus, uint8_t * p_data, uint16_t length)
 {
     uint16_t ii;
-
     for (ii = 0; ii < length; ++ii) {
-        if (p_data[ii] == SERIALCOMM_FRAME_START) {
-            // frame start
-            receiving = true;
-            bytes_received = 0;
-        }
-
-        if (receiving) {
-            buffer[bytes_received] = p_data[ii];
-            bytes_received++;
-        }
-
-        // TODO: check buf_offset against max buffer size!
-
-        if (p_data[ii] == SERIALCOMM_FRAME_END) {
-            // end of frame
-            receiving = false;
-            buf_offset = 0;
-
-            // start sending the data back
-            ble_transmit_next_chunk();
-        }
+        // blindly send each byte received over UART
+        while (app_uart_put(p_data[ii]) != NRF_SUCCESS);
     }
-
-/* MONKEY:
-    uint32_t err_code;
-    err_code = ble_nus_string_send(&m_nus, p_data, length);
-    if (err_code != NRF_ERROR_INVALID_STATE)
-    {
-        APP_ERROR_CHECK(err_code);
-    }
-*/
-
-/* MONKEY:
-    for (uint32_t i = 0; i < length; i++)
-    {
-        while (app_uart_put(p_data[i]) != NRF_SUCCESS);
-    }
-    while (app_uart_put('\r') != NRF_SUCCESS);
-    while (app_uart_put('\n') != NRF_SUCCESS);
-*/
 }
 /**@snippet [Handling the data received over BLE] */
 
@@ -447,7 +409,6 @@ static void ble_evt_dispatch(ble_evt_t * p_ble_evt)
     on_ble_evt(p_ble_evt);
     ble_advertising_on_ble_evt(p_ble_evt);
     bsp_btn_ble_on_ble_evt(p_ble_evt);
-
 }
 
 
@@ -534,25 +495,34 @@ void bsp_event_handler(bsp_event_t event)
 /**@snippet [Handling the data received over UART] */
 void uart_event_handle(app_uart_evt_t * p_event)
 {
-    static uint8_t data_array[BLE_NUS_MAX_DATA_LEN];
-    static uint8_t index = 0;
-    uint32_t       err_code;
+    uint8_t        byte;
 
     switch (p_event->evt_type)
     {
         case APP_UART_DATA_READY:
-            UNUSED_VARIABLE(app_uart_get(&data_array[index]));
-            index++;
+            // read out byte
+            UNUSED_VARIABLE(app_uart_get(&byte));
 
-            if ((data_array[index - 1] == '\n') || (index >= (BLE_NUS_MAX_DATA_LEN)))
-            {
-                err_code = ble_nus_string_send(&m_nus, data_array, index);
-                if (err_code != NRF_ERROR_INVALID_STATE)
-                {
-                    APP_ERROR_CHECK(err_code);
-                }
+            if (byte == SERIALCOMM_FRAME_START) {
+                // frame start
+                receiving = true;
+                bytes_received = 0;
+            }
 
-                index = 0;
+            if (receiving) {
+                buffer[bytes_received] = byte;
+                bytes_received++;
+            }
+
+            // TODO: check buf_offset against max buffer size!
+
+            if (byte == SERIALCOMM_FRAME_END) {
+                // end of frame
+                receiving = false;
+                buf_offset = 0;
+
+                // start sending the data back
+                ble_transmit_next_chunk();
             }
             break;
 
