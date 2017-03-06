@@ -37,6 +37,7 @@
 #include "app_util_platform.h"
 #include "bsp.h"
 #include "bsp_btn_ble.h"
+#include "led_softblink.h"
 
 #define IS_SRVC_CHANGED_CHARACT_PRESENT 0                                           /**< Include the service_changed characteristic. If not enabled, the server's database cannot be changed for the lifetime of the device. */
 
@@ -78,6 +79,8 @@
 
 #define SERIALCOMM_FRAME_START          ':'
 #define SERIALCOMM_FRAME_END            '\n'
+
+#define BLENANO_LEDS_MASK               (1 << BSP_LED_0)
 
 static ble_nus_t                        m_nus;                                      /**< Structure to identify the Nordic UART Service. */
 static uint16_t                         m_conn_handle = BLE_CONN_HANDLE_INVALID;    /**< Handle of the current connection. */
@@ -606,7 +609,8 @@ static void buttons_leds_init(bool * p_erase_bonds)
 {
     bsp_event_t startup_event;
 
-    uint32_t err_code = bsp_init(BSP_INIT_LED | BSP_INIT_BUTTONS,
+    // MONKEY: uint32_t err_code = bsp_init(BSP_INIT_LED | BSP_INIT_BUTTONS,
+    uint32_t err_code = bsp_init(BSP_INIT_BUTTONS,
                                  APP_TIMER_TICKS(100, APP_TIMER_PRESCALER),
                                  bsp_event_handler);
     APP_ERROR_CHECK(err_code);
@@ -647,6 +651,13 @@ int main(void)
 
     printf("\r\nUART Start!\r\n");
     err_code = ble_advertising_start(BLE_ADV_MODE_FAST);
+    APP_ERROR_CHECK(err_code);
+
+    const led_sb_init_params_t led_sb_init_param = LED_SB_INIT_DEFAULT_PARAMS(BLENANO_LEDS_MASK);
+    err_code = led_softblink_init(&led_sb_init_param);
+    APP_ERROR_CHECK(err_code);
+
+    err_code = led_softblink_start(BLENANO_LEDS_MASK);
     APP_ERROR_CHECK(err_code);
 
     // Enter main loop.

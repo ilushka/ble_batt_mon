@@ -1,4 +1,4 @@
-PROJECT_NAME     := ble_app_uart_pca10028_s130
+PROJECT_NAME     := ble_app_uart_redbear_s130
 TARGETS          := nrf51422_xxac
 OUTPUT_DIRECTORY := _build
 
@@ -44,6 +44,8 @@ SRC_FILES += \
   $(SDK_ROOT)/components/toolchain/system_nrf51.c \
   $(SDK_ROOT)/components/ble/ble_services/ble_nus/ble_nus.c \
   $(SDK_ROOT)/components/softdevice/common/softdevice_handler/softdevice_handler.c \
+	$(SDK_ROOT)/components/libraries/low_power_pwm/low_power_pwm.c \
+	$(SDK_ROOT)/components/libraries/led_softblink/led_softblink.c \
 
 # Include folders common to all targets
 INC_FOLDERS += \
@@ -154,7 +156,7 @@ INC_FOLDERS += \
 LIB_FILES += \
 
 # C flags common to all targets
-CFLAGS += -DBOARD_PCA10028
+CFLAGS += -DREDBEAR_BLENANO
 CFLAGS += -DSOFTDEVICE_PRESENT
 CFLAGS += -DNRF51
 CFLAGS += -DS130
@@ -175,7 +177,7 @@ CXXFLAGS += \
 
 # Assembler flags common to all targets
 ASMFLAGS += -x assembler-with-cpp
-ASMFLAGS += -DBOARD_PCA10028
+ASMFLAGS += -DREDBEAR_BLENANO
 ASMFLAGS += -DSOFTDEVICE_PRESENT
 ASMFLAGS += -DNRF51
 ASMFLAGS += -DS130
